@@ -1,0 +1,53 @@
+---
+- name: Create a server and do things to it
+  hosts: localhost
+  gather_facts: False
+  tasks:
+    - name: Provision an instances
+      ec2:
+         key_name: ansible
+         instance_type: t2.micro
+         image: ami-1234567
+         wait: yes
+         region: us-east-1
+         group:  ['Chud']
+         vpc_subnet_id: subnet-1234567
+         assign_public_ip: yes
+         count: "1"
+         volumes: 
+         - device_name: /dev/sda1
+           device_type: gp2
+           volume_size: 8
+           delete_on_termination: true
+         instance_tags:
+            Name: 'Chud'
+            Role: 'moviestar'
+            Env: 'testing'
+      register: ec2
+
+    - name: Add new instance to a host group
+      add_host:
+        hostname: "{{ item.public_ip }}"
+        groupname: launched
+      with_items: "{{ ec2.instances }}"
+
+    - name: Wait for SSH to come up
+      wait_for:
+        host: "{{ item.public_dns_name }}"
+        port: 22
+        delay: 120
+        timeout: 360
+        state: started
+      with_items: "{{ ec2.instances }}"
+
+- name: Do something on the instance we just launched.
+  hosts: launched
+  become: True
+  gather_facts: True
+  tasks:
+    - name: run the super l33t hack scr1pt - You know, for kids.
+      shell: /bin/bash -lc '/root/hack.sh'
+      args:
+        chdir: /root/
+        
+# The End. You could at this point terminate the instance too, but I'll leave that off for now.
