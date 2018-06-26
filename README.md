@@ -27,7 +27,7 @@ This is a role, so you would apply it to multiple machines. It is intended to be
 
 It mimics the set up of a Capistrano (thats Ruby if you weren't aware) deployment. I very much like the scheme of a Capistrano deployment, but I very much dislike that it requires a lot of Ruby and is hard to maintain.
 
-Ansible is just YML. Heck, my mom could read this and know what it says with NotePad. So why not use the same tool that deploys you machine, to also deploy the code? Seems silly to deploy with tool A then have tool A tell tool B to go run. Just do both. No blocking, no interprocess hackery, no muss.
+Ansible is just YML. Heck, my mom could read this and know what it says with NotePad. So why not use the same tool that deploys your machine, to also deploy the code? Seems silly to deploy with tool A then have tool A tell tool B to go run. Just do both. No blocking, no interprocess hackery, no muss.
 
 Read more about Capistrano at an internet near you.
 ### Requirements
@@ -47,7 +47,7 @@ You probably have a playbook vaguely looking like this:
   roles:
     - os.common
     - app.common
-	- app.deploy
+    - app.deploy
 ```
 
 If you check out this role, it would be app.deploy in this stack, because it sets up your Capistrano-style directories and does Capistrano-style code checkout and post-checkout configurations.
