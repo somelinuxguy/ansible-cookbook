@@ -1,2 +1,118 @@
-# stub
+# Fake Capistrano - Main task
+# Author and updates here: https://github.com/somelinuxguy
+# your app is probably not called myapp and your owner/group
+# is probably not dracula. Make appropriate changes!
 ---
+- name: Report Environment
+  debug:
+    msg: "Working in environment: {{ hostvars[inventory_hostname]['ec2_tag_Env'] }}"
+      
+- name: Generate release timestamp
+  command: date +%Y%m%d%H%M%S
+  register: timestamp
+  run_once: true
+
+- set_fact: "release_path='/opt/myapp/releases/{{ timestamp.stdout }}'"
+- set_fact: "shared_path='/opt/myapp/shared'"
+- set_fact: "current_path='/opt/myapp/current'"
+
+- name: Create the release directory
+  file:
+    state: directory
+    path: "{{ release_path }}"
+    owner: dracula
+    group: dracula
+    mode: 0770
+
+- name: Im on prod - Git clone the master branch
+  git:
+    repo: "git@github.com:exampleuser/exmapleapp.git"
+    dest: "{{ release_path }}"
+    key_file: /home/dracula/.ssh/id_rsa
+    clone: yes
+    accept_hostkey: yes
+    version: master
+  become: yes
+  become_user: dracula
+  when: hostvars[inventory_hostname]['ec2_tag_Env']  == "prod"
+
+- name: Im on staging - Git clone the staging branch
+  git:
+    repo: "git@github.com:exampleuser/exmapleapp.git"
+    dest: "{{ release_path }}"
+    key_file: /home/dracula/.ssh/id_rsa
+    clone: yes
+    accept_hostkey: yes
+    version: staging
+  become: yes
+  become_user: dracula
+  when: hostvars[inventory_hostname]['ec2_tag_Env']  == "stg"
+
+- name: Remove the repo cruft - log dir
+  file:
+    path={{ release_path }}/log
+    state=absent
+
+- name: Symlink to the shared log
+  file:
+    state: link
+    src: /opt/myapp/shared/log
+    path: "{{ release_path }}/log"
+    owner: dracula
+    group: dracula
+
+- name: Activate this deploy as current
+  file:
+    state: link
+    src: "{{ release_path }}"
+    path: "{{ current_path }}"
+    owner: dracula
+    group: dracula
+    
+- name: Install the gemset with bundle install
+  shell: "bash -lc 'cd {{ release_path }}; bundle install'"
+  become: yes
+  become_user: dracula
+  
+- name: Run Migrations
+  shell: "bash -lc 'cd {{ current_path }}; bundle exec rake db:migrate'"
+  become: yes
+  become_user: dracula
+
+- name: Run bower
+  shell: "bash -lc 'cd {{ current_path }}; bundle exec rake bower:install'"
+  become: yes
+  become_user: dracula
+  
+- name: Example - Run some other thing you need to run
+  shell: "bash -lc 'cd {{ current_path }}; run something else here'"
+  become: yes
+  become_user: dracula
+ 
+- name: Precompile the assets
+  shell: "bash -lc 'cd {{ current_path }}; bundle exec rake assets:precompile'"
+  become: yes
+  become_user: dracula
+
+- name: Post Deploy permissions
+  file:
+    path: /opt/myapp/
+    owner: dracula
+    group: dracula
+    recurse: yes
+    mode: 0770
+  ignore_errors: yes
+  
+- name: Post Deploy permissions for one dir
+  file:
+    path: /opt/myapp/
+    mode: 0775
+  ignore_errors: yes
+  
+- name: Post Deploy permissions for something else
+  file:
+    path: /opt/myapp/releases
+    mode: 0775
+  ignore_errors: yes
+  
+# thus concludes this example playbook
